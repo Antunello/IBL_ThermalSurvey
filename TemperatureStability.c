@@ -36,12 +36,45 @@ struct run_time_interval{
 
 };
 
+void fill_temp_map(TH2D* map, double temp, std::string module);
+void draw_option_temp_map(TH2D* map);
 double dayTime_in_sec(std::string dayTime);
 unsigned long int date_in_days(std::string date);
 void fill_time_interval(int run_number, run_time_interval RTI, std::string run_list_filname);
 void select_data(run_time_interval RTI, std::stringstream& buffer, std::stringstream& selection);
 
 void sort_module_data(std::stringstream& buffer, module_data* MD);
+
+void draw_option_temp_map(TH2D* temp_map){
+	temp_map->Draw();
+
+	std::string labels[8] = {"M4C","M3C","M2C","M1C","M1A","M2A","M3A","M4A"};
+	for(int i=1; i<=8; i++)temp_map->GetXaxis()->SetBinLabel(i,labels[i-1].c_str());
+	temp_map->GetXaxis()->SetTitle("Sector");
+	temp_map->GetYaxis()->SetTitle("Stave");
+	temp_map->GetXaxis()->SetLabelSize(0.060);
+	temp_map->GetYaxis()->SetLabelSize(0.060);
+	temp_map->GetXaxis()->SetTitleSize(0.060);
+	temp_map->GetYaxis()->SetTitleSize(0.060);
+	temp_map->GetXaxis()->SetTitleOffset(0.8);
+
+}
+
+void fill_temp_map(TH2D* map, double temp, std::string module){
+	int stave_id = atoi(module.substr(4,2).c_str());
+	//std::cout<<"MODULE "<<module<<std::endl;
+//	if(module.find("_C") != std::string::npos && !module_check) map->SetBinContent(1,stave_id, temp);	
+	if(module.find("C_M4") != std::string::npos) map->SetBinContent(1,stave_id,temp);
+	if(module.find("C_M3") != std::string::npos) map->SetBinContent(2,stave_id,temp);
+	if(module.find("C_M2") != std::string::npos) map->SetBinContent(3,stave_id,temp);
+	if(module.find("C_M1") != std::string::npos) map->SetBinContent(4,stave_id,temp);
+	if(module.find("A_M1") != std::string::npos) map->SetBinContent(5,stave_id,temp);
+	if(module.find("A_M2") != std::string::npos) map->SetBinContent(6,stave_id,temp);
+	if(module.find("A_M3") != std::string::npos) map->SetBinContent(7,stave_id,temp);
+	if(module.find("A_M4") != std::string::npos) map->SetBinContent(8,stave_id,temp);
+//	if(module.find("_A") != std::string::npos && !module_check) map->SetBinContent(10,stave_id, temp);	
+
+}
 
 void fill_time_interval(int run_number, run_time_interval* RTI, std::string run_list_filename){
 	//RTI.run_number = run_number;
@@ -138,7 +171,11 @@ void TemperatureStablity(int runNumber){
 	std::string temp_file_name = "IBL_temperature_"+time_interval+".txt";
 	std::string run_list = "m9run_startstop.txt";
 	ifstream ddv_data_temp;
-	//TH1D* temp_distro = new TH1D(sel_module.c_str(),sel_module.c_str(), 1000, -20,20);
+	TH2D* temp_mean_map = new TH2D("temp_mean_map", "temp_mean_map", 8, 0, 8, 14, 0.5, 14.5);
+	TH2D* temp_rms_map = new TH2D("temp_RMS_map", "temp_RMS_map", 8, 0, 8, 14, 0.5, 14.5);
+	TH1D* temp_mean_distro = new TH1D("temp_mean_distro", "temp_mean_distro", 180, -30, 30);
+	TH1D* temp_rms_distro = new TH1D("temp_rms_distro", "temp_rms_distro", 180, 0, 0.5);
+
 
 	std::stringstream output_file_name;
 	output_file_name<<runNumber<<".root";
@@ -160,11 +197,23 @@ void TemperatureStablity(int runNumber){
 
 
 		sort_module_data(temp_selection, MD_sectors);
-		for(int i=0; i < 112; i++) MD_sectors[i].temp_distro->Write();
-		//	std::cout<<MD_sectors[i].module<<std::endl;
+		for(int i=0; i < 112; i++){
+			MD_sectors[i].temp_distro->Write();
+			temp_mean_distro->Fill(MD_sectors[i].temp_distro->GetMean());
+			temp_rms_distro->Fill(MD_sectors[i].temp_distro->GetRMS());
+
+			fill_temp_map(temp_mean_map, MD_sectors[i].temp_distro->GetMean(), MD_sectors[i].module);
+			fill_temp_map(temp_rms_map, MD_sectors[i].temp_distro->GetRMS(), MD_sectors[i].module);
+		}//	std::cout<<MD_sectors[i].module<<std::endl;
 
 	}
 
+	draw_option_temp_map(temp_mean_map);
+	draw_option_temp_map(temp_rms_map);
+	temp_mean_distro->Write();
+	temp_rms_distro->Write();
+	temp_mean_map->Write();
+	temp_rms_map->Write();
 	output_file->Close();
 
 
