@@ -43,7 +43,34 @@ unsigned long int date_in_days(std::string date);
 void fill_time_interval(int run_number, run_time_interval RTI, std::string run_list_filname);
 void select_data(run_time_interval RTI, std::stringstream& buffer, std::stringstream& selection);
 
+void TemperatureStabilityForRun(int runNumber, std::string temp_file_name, std::string run_list);
 void sort_module_data(std::stringstream& buffer, module_data* MD);
+
+
+void TempStability(std::string temp_file_name, std::string run_list){
+	std::vector<int> runs;
+	std::string trash;	
+	int run;
+
+	ifstream runListFile;
+	runListFile.open(run_list.c_str());
+	std::stringstream buffer;
+	buffer << runListFile.rdbuf();
+	while(buffer){
+		buffer>>run;
+		buffer>>trash;
+		buffer>>trash;
+		runs.push_back(run);
+		std::cout<<run<<std::endl;
+	} 
+	runListFile.close();
+	
+	for(std::vector<int>::iterator it = runs.begin(); it != runs.end(); ++it) {
+//     std::cout << *it; ... 
+		TemperatureStabilityForRun(*it, temp_file_name, run_list);
+	}	
+}
+
 
 void draw_option_temp_map(TH2D* temp_map){
 	temp_map->Draw();
@@ -88,9 +115,12 @@ void fill_time_interval(int run_number, run_time_interval* RTI, std::string run_
 		buffer << run_list.rdbuf();
 			
 		while(buffer){
-			std::getline(buffer, rNumber, ',');
-			std::getline(buffer, rStart, ',');
-			std::getline(buffer, rStop);
+		//	std::getline(buffer, rNumber, ',');
+		//	std::getline(buffer, rStart, ',');
+		//	std::getline(buffer, rStop);
+		buffer>>rNumber;
+		buffer>>rStart;
+		buffer>>rStop;
 			if(atoi(rNumber.c_str()) == run_number){
 				RTI->run_number = atoi(rNumber.c_str());
 				RTI->start_time = atof(rStart.c_str());
@@ -108,9 +138,10 @@ void select_data(run_time_interval RTI, std::stringstream& buffer, std::stringst
 	double data;
 	while(buffer){
 		buffer>>module;
+		buffer>>data;		
 		buffer>>date;
 		buffer>>hours;
-		buffer>>data;		
+		//buffer>>data;		
 
 		timestamp = date +"_" +hours.substr(0,8);
 
@@ -161,15 +192,15 @@ void sort_module_data(std::stringstream& buffer, module_data* MD){
 	}
 }
 
-void TemperatureStablity(int runNumber){
+void TemperatureStabilityForRun(int runNumber, std::string temp_file_name, std::string run_list){
 
 //	std::string sel_module = "LI_S01_A_M1_TModule";
 	
 	module_data MD_sectors[112];
 
-	std::string time_interval = "0703-1603";
-	std::string temp_file_name = "IBL_temperature_"+time_interval+".txt";
-	std::string run_list = "m9run_startstop.txt";
+	//std::string time_interval = "0703-1603";
+	//std::string temp_file_name = "M7_mod_temperature.txt";
+	//std::string run_list = "M7_runQuery.txt";
 	ifstream ddv_data_temp;
 	TH2D* temp_mean_map = new TH2D("temp_mean_map", "temp_mean_map", 8, 0, 8, 14, 0.5, 14.5);
 	TH2D* temp_rms_map = new TH2D("temp_RMS_map", "temp_RMS_map", 8, 0, 8, 14, 0.5, 14.5);
