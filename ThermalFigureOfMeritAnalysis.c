@@ -24,7 +24,7 @@ unsigned long int date_in_days(std::string date);
 
 void fill_temp_map(TH2D* map, double temp, std::string module, bool module_check = true);
 void fill_power_map(TH2D* map, double power, std::string module);
-
+double corr_cooling(double temp);
 void FicoPlot();
 
 struct module_data{
@@ -41,7 +41,12 @@ struct cooling_data{
 	std::vector<double> temp_time;
 };
 
+double corr_cooling(double temp){
+	double corr =  (4e-08*pow(temp,4))-(2e-06*pow(temp,3))+(5e-04*pow(temp,2))-(0.0487*temp)+1.1974;
+	std::cout<<"TEMP: "<<temp<<"\tCORRECTION IS :"<<corr<<std::endl;
+	return corr;
 
+}
 
 
 void FicoPlot(){
@@ -115,10 +120,10 @@ void TFoM(){
 	cooling_data CD_halfstave[28];
 
 	// timestamp: M6 = 166550 | M7 = 232000 | M8 = 342000 | M9 = 378800 
-	int timestamp = 384000;
+	int timestamp = 342000;
 	ifstream ddv_data_temp;
 	// time_interval M6 = "1310-1710" | M7 = "2011-1612" | M8 = "2301-2402" "2402-0103" | M9 = "1103-1203" "0703-1403" "0703-1603"
-	std::string time_interval = "0703-1603";
+	std::string time_interval = "2301-2402";
 	std::string temp_file_name = "IBL_temperature_"+time_interval+".txt";
 	std::string power_file_name = "IBL_power_"+time_interval+".txt";
 	std::string cool_file_name = "IBL_coolingPipe_"+time_interval+".txt";
@@ -213,6 +218,7 @@ void TFoM(){
 			buffer_cooling >> hours;
 			buffer_cooling >> temp;
 			minutes = (double)date_in_days(date)*1440+(double)dayTime_in_sec(hours);
+			temp = temp - corr_cooling(temp);
 			CD_halfstave[m_index].temps.push_back(temp);
 			CD_halfstave[m_index].temp_time.push_back(minutes);	
 			CD_halfstave[m_index].half_stave = half_stave;
@@ -257,8 +263,10 @@ void TFoM(){
 			//std::cout<<"Cool A: "<<cool_temp_A<<"\tCool C: "<<cool_temp_C<<"Stave: "<<s_id<<std::endl;		
 		}
 
-		cool_step = (cool_temp_A-cool_temp_C)/9;
-		cool_temp = cool_temp_C + cool_step*(9-(m_id+1));
+//		cool_step = (cool_temp_A-cool_temp_C)/9;
+//		cool_temp = cool_temp_C + cool_step*(9-(m_id+1));
+		if(s_id%2==1)cool_temp=cool_temp_C;
+		else cool_temp=cool_temp_A;
 		//std::cout<<"STAVE ID: "<<s_id<<"\tModule id"<<m_id<<"\tSECTOR:"<<MD_sectors[i].module<<"Cooling pipe A: "<<cool_temp_A<<" | Estimation: "<<cool_temp<<" | Cooling pipe C: "<<cool_temp_C<<std::endl;
 		//std::cout<<"COOL TEMP = "<<cool_temp<<"\tSTAVE ID:"<<s_id<<std::endl;
 		std::string t_string = MD_sectors[i].module+".temp";
@@ -274,7 +282,7 @@ void TFoM(){
 
 		mod_temp = graph_t->Eval(timestamp);
 		mod_power = graph_p->Eval(timestamp);
-
+		//double set_point = -10;
 		// FOOT print of each FE is 3.15cm^2
 		tfom_value = (mod_temp-cool_temp)/(mod_power/(12.6));
 		//std::cout<<mod_temp<<"\t"<<cool_temp<<"\t"<<mod_power<<"\t"<<tfom_value<<std::endl;
